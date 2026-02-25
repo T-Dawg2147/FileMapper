@@ -33,4 +33,17 @@ public class MappingDefinition
     /// Gets or sets the fixed-width column definitions used when the target is <see cref="FileType.FixedWidth"/>.
     /// </summary>
     public List<FixedWidthColumn>? TargetFixedWidthColumns { get; set; }
+
+    /// <summary>
+    /// Gets or sets the expected source file name (or static prefix) used by the Converter
+    /// to match incoming files to the correct mapping.
+    /// </summary>
+    public string? ExpectedFileName { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, <see cref="ExpectedFileName"/> is treated as a prefix —
+    /// any source file whose name starts with that value will use this mapping.
+    /// When <see langword="false"/>, the source file name must match <see cref="ExpectedFileName"/> exactly.
+    /// </summary>
+    public bool FileNameIsPrefix { get; set; }
 }

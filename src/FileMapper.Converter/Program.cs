@@ -52,25 +52,35 @@ using var logger = new RunLogger(logFile);
 logger.Info($"FileMapper.Converter starting. Config: {configPath}");
 
 // ---------------------------------------------------------------------------
-// Load mapping definition
+// Load mapping definitions from the mappings folder
 // ---------------------------------------------------------------------------
-if (!File.Exists(config.MappingFilePath))
+if (!Directory.Exists(config.MappingsFolderPath))
 {
-    logger.Error($"Mapping file not found: {config.MappingFilePath}");
+    logger.Error($"Mappings folder not found: {config.MappingsFolderPath}");
     Environment.Exit(2);
     return;
 }
 
 var serializer = new MappingSerializer();
-MappingDefinition mapping;
-try
+var mappings = new List<MappingDefinition>();
+foreach (var mapFile in Directory.GetFiles(config.MappingsFolderPath, "*.map.json"))
 {
-    mapping = await serializer.LoadAsync(config.MappingFilePath);
-    logger.Info($"Loaded mapping '{mapping.Name}' ({mapping.SourceType} → {mapping.TargetType}).");
+    try
+    {
+        var m = await serializer.LoadAsync(mapFile);
+        mappings.Add(m);
+        logger.Info($"Loaded mapping '{m.Name}' from '{mapFile}' " +
+                    $"(ExpectedFileName: {m.ExpectedFileName ?? "(none)"}, IsPrefix: {m.FileNameIsPrefix}).");
+    }
+    catch (Exception ex)
+    {
+        logger.Warning($"Skipping invalid mapping file '{mapFile}': {ex.Message}");
+    }
 }
-catch (Exception ex)
+
+if (mappings.Count == 0)
 {
-    logger.Error($"Failed to load mapping file: {ex.Message}");
+    logger.Error($"No valid .map.json files found in '{config.MappingsFolderPath}'.");
     Environment.Exit(3);
     return;
 }
@@ -81,10 +91,7 @@ catch (Exception ex)
 List<string> sourceFiles;
 if (Directory.Exists(config.SourcePath))
 {
-    var ext = FileParserFactory.DetectFromExtension("dummy." + mapping.SourceType.ToString().ToLowerInvariant()) is { } ft
-        ? ft.ToString().ToLowerInvariant()
-        : "*";
-    sourceFiles = Directory.GetFiles(config.SourcePath, $"*.{ext}").ToList();
+    sourceFiles = Directory.GetFiles(config.SourcePath).ToList();
     logger.Info($"Batch mode: found {sourceFiles.Count} file(s) in '{config.SourcePath}'.");
 }
 else if (File.Exists(config.SourcePath))
@@ -99,35 +106,68 @@ else
 }
 
 // ---------------------------------------------------------------------------
+// Helper: find the best mapping for a given source file
+// ---------------------------------------------------------------------------
+MappingDefinition? FindMapping(string sourceFileName)
+{
+    // First pass: exact match
+    foreach (var m in mappings)
+    {
+        if (!string.IsNullOrEmpty(m.ExpectedFileName) && !m.FileNameIsPrefix &&
+            string.Equals(sourceFileName, m.ExpectedFileName, StringComparison.OrdinalIgnoreCase))
+        {
+            return m;
+        }
+    }
+
+    // Second pass: prefix match (longest prefix wins)
+    MappingDefinition? bestPrefix = null;
+    int bestLen = 0;
+    foreach (var m in mappings)
+    {
+        if (!string.IsNullOrEmpty(m.ExpectedFileName) && m.FileNameIsPrefix &&
+            sourceFileName.StartsWith(m.ExpectedFileName, StringComparison.OrdinalIgnoreCase) &&
+            m.ExpectedFileName.Length > bestLen)
+        {
+            bestPrefix = m;
+            bestLen = m.ExpectedFileName.Length;
+        }
+    }
+    if (bestPrefix is not null) return bestPrefix;
+
+    // Fallback: if there is exactly one mapping without an ExpectedFileName, use it
+    var fallbacks = mappings.Where(m => string.IsNullOrEmpty(m.ExpectedFileName)).ToList();
+    return fallbacks.Count == 1 ? fallbacks[0] : null;
+}
+
+// ---------------------------------------------------------------------------
 // Convert each file
 // ---------------------------------------------------------------------------
 var engine = new FileConversionEngine();
 int totalRecords = 0;
 int failedFiles = 0;
+int skippedFiles = 0;
 var stopwatch = Stopwatch.StartNew();
 
-bool isBatch = sourceFiles.Count > 1;
-if (isBatch)
-    Directory.CreateDirectory(config.OutputPath);
+Directory.CreateDirectory(config.OutputPath);
 
 foreach (var sourceFile in sourceFiles)
 {
-    string outputFile;
-    if (isBatch)
+    var fileName = Path.GetFileName(sourceFile);
+    var mapping = FindMapping(fileName);
+
+    if (mapping is null)
     {
-        var baseName = Path.GetFileNameWithoutExtension(sourceFile);
-        var targetExt = mapping.TargetType.ToString().ToLowerInvariant();
-        outputFile = Path.Combine(config.OutputPath, $"{baseName}.{targetExt}");
-    }
-    else
-    {
-        outputFile = config.OutputPath;
-        var outDir = Path.GetDirectoryName(outputFile);
-        if (!string.IsNullOrEmpty(outDir))
-            Directory.CreateDirectory(outDir);
+        logger.Warning($"No matching mapping found for '{fileName}' — skipping.");
+        skippedFiles++;
+        continue;
     }
 
-    logger.Info($"Converting '{sourceFile}' → '{outputFile}'");
+    var baseName = Path.GetFileNameWithoutExtension(sourceFile);
+    var targetExt = mapping.TargetType.ToString().ToLowerInvariant();
+    var outputFile = Path.Combine(config.OutputPath, $"{baseName}.{targetExt}");
+
+    logger.Info($"Converting '{sourceFile}' → '{outputFile}' using mapping '{mapping.Name}'.");
     try
     {
         var warnings = new List<(int Row, string Field, string Message)>();
@@ -148,7 +188,7 @@ foreach (var sourceFile in sourceFiles)
 }
 
 stopwatch.Stop();
-logger.Info($"Run complete. Total records: {totalRecords}. Failed files: {failedFiles}. " +
+logger.Info($"Run complete. Total records: {totalRecords}. Failed files: {failedFiles}. Skipped: {skippedFiles}. " +
             $"Time: {stopwatch.Elapsed.TotalSeconds:F2}s.");
 
 if (failedFiles > 0)

@@ -42,6 +42,9 @@
                 <Separator/>
                 <MenuItem Header="E_xit" Click="MenuExit_Click"/>
             </MenuItem>
+            <MenuItem Header="_Settings">
+                <MenuItem Header="Set Default Mapping Output _Folder…" Command="{Binding OpenSettingsCommand}"/>
+            </MenuItem>
         </Menu>
 
         <!-- Status Bar -->
@@ -54,6 +57,7 @@
         <!-- Main Content -->
         <Grid Margin="6">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -79,8 +83,30 @@
                 </Grid>
             </GroupBox>
 
-            <!-- Row 1: Source & Target File Selection -->
-            <Grid Grid.Row="1">
+            <!-- Row 1: Expected File Name for converter matching -->
+            <GroupBox Grid.Row="1" Header="File Matching (Converter)" Style="{StaticResource GroupBoxStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Column="0" Content="Expected File Name:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="1"
+                             Text="{Binding ExpectedFileName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource TextBoxStyle}"
+                             ToolTip="The file name (or static prefix) that the Converter uses to match incoming files to this mapping.&#x0a;Example: ORDERS_A001"/>
+                    <Label Grid.Column="2" Content="Name is prefix:" Style="{StaticResource LabelStyle}"/>
+                    <CheckBox Grid.Column="3"
+                              IsChecked="{Binding FileNameIsPrefix}"
+                              VerticalAlignment="Center" Margin="2"
+                              ToolTip="When checked, files whose name starts with the expected name will use this mapping.&#x0a;e.g. ORDERS_A001 matches ORDERS_A001-PCS-00999162-1_20260224-171040.json"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Row 2: Source & Target File Selection -->
+            <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="*"/>
@@ -155,8 +181,8 @@
                 </GroupBox>
             </Grid>
 
-            <!-- Row 2: Three-panel mapping area -->
-            <Grid Grid.Row="2" Margin="0,4">
+            <!-- Row 3: Three-panel mapping area -->
+            <Grid Grid.Row="3" Margin="0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="180"/>
                     <ColumnDefinition Width="6"/>
@@ -221,8 +247,8 @@
                 </GroupBox>
             </Grid>
 
-            <!-- Row 3: Quick-add tip -->
-            <TextBlock Grid.Row="3" Margin="6,2"
+            <!-- Row 4: Quick-add tip -->
+            <TextBlock Grid.Row="4" Margin="6,2"
                        Text="Tip: Select a Source Field and a Target Field, then click ➕ Add Mapping."
                        Foreground="Gray" FontStyle="Italic"/>
         </Grid>

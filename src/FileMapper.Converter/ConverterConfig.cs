@@ -7,8 +7,8 @@ namespace FileMapper.Converter;
 /// </summary>
 public class ConverterConfig
 {
-    /// <summary>Gets or sets the path to the <c>.map.json</c> mapping file.</summary>
-    public string MappingFilePath { get; set; } = string.Empty;
+    /// <summary>Gets or sets the folder path that contains <c>.map.json</c> mapping files.</summary>
+    public string MappingsFolderPath { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the path to a single source input file, or a folder path for batch processing.
