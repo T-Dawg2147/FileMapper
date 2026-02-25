@@ -6,6 +6,7 @@ using FileMapper.Core.Validation;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 
 namespace FileMapper.UI.ViewModels;
@@ -15,6 +16,9 @@ public class MainViewModel : ViewModelBase
 {
     private readonly MappingSerializer _serializer = new();
     private readonly TypeCompatibilityValidator _validator = new();
+
+    private static readonly string UiSettingsPath =
+        Path.Combine(AppContext.BaseDirectory, "ui-settings.json");
 
     private string _mappingName = "New Mapping";
     private FileType _sourceType = FileType.Json;
@@ -26,6 +30,10 @@ public class MainViewModel : ViewModelBase
     private bool _flattenEnabled;
     private string? _selectedSourceField;
     private string? _selectedTargetField;
+    private string _expectedFileName = string.Empty;
+    private bool _fileNameIsPrefix;
+
+    private UiSettings _uiSettings = new();
 
     /// <summary>Gets or sets the mapping name.</summary>
     public string MappingName
@@ -90,6 +98,26 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _selectedTargetField, value);
     }
 
+    /// <summary>
+    /// Gets or sets the expected source file name (or static prefix) used by the Converter
+    /// to match incoming files to this mapping.
+    /// </summary>
+    public string ExpectedFileName
+    {
+        get => _expectedFileName;
+        set => SetProperty(ref _expectedFileName, value);
+    }
+
+    /// <summary>
+    /// When <see langword="true"/>, <see cref="ExpectedFileName"/> is treated as a prefix;
+    /// any file whose name starts with that value will use this mapping.
+    /// </summary>
+    public bool FileNameIsPrefix
+    {
+        get => _fileNameIsPrefix;
+        set => SetProperty(ref _fileNameIsPrefix, value);
+    }
+
     /// <summary>Gets the list of source field paths loaded from the sample file.</summary>
     public ObservableCollection<string> SourceFields { get; } = new();
 
@@ -127,6 +155,9 @@ public class MainViewModel : ViewModelBase
     /// <summary>Loads an existing <c>.map.json</c> file.</summary>
     public RelayCommand LoadMappingCommand { get; }
 
+    /// <summary>Opens the settings dialog to configure default mapping output folder.</summary>
+    public RelayCommand OpenSettingsCommand { get; }
+
     /// <summary>Initialises a new <see cref="MainViewModel"/>.</summary>
     public MainViewModel()
     {
@@ -140,6 +171,9 @@ public class MainViewModel : ViewModelBase
             p => p is FieldMappingViewModel);
         SaveMappingCommand = new RelayCommand(async _ => await SaveMappingAsync());
         LoadMappingCommand = new RelayCommand(async _ => await LoadMappingAsync());
+        OpenSettingsCommand = new RelayCommand(_ => OpenSettings());
+
+        LoadUiSettings();
     }
 
     private void BrowseFile(bool isSource)
@@ -278,6 +312,12 @@ public class MainViewModel : ViewModelBase
             FileName = _currentMapFilePath ?? MappingName
         };
 
+        if (!string.IsNullOrEmpty(_uiSettings.DefaultMappingOutputFolder) &&
+            Directory.Exists(_uiSettings.DefaultMappingOutputFolder))
+        {
+            dialog.InitialDirectory = _uiSettings.DefaultMappingOutputFolder;
+        }
+
         if (dialog.ShowDialog() != true) return;
 
         _currentMapFilePath = dialog.FileName;
@@ -288,7 +328,9 @@ public class MainViewModel : ViewModelBase
             SourceType = SourceType,
             TargetType = TargetType,
             FieldMappings = FieldMappings.Select(vm => vm.ToModel()).ToList(),
-            Flattening = new FlatteningConfiguration { Enabled = FlattenEnabled }
+            Flattening = new FlatteningConfiguration { Enabled = FlattenEnabled },
+            ExpectedFileName = string.IsNullOrWhiteSpace(ExpectedFileName) ? null : ExpectedFileName,
+            FileNameIsPrefix = FileNameIsPrefix
         };
 
         try
@@ -320,6 +362,8 @@ public class MainViewModel : ViewModelBase
             SourceType = definition.SourceType;
             TargetType = definition.TargetType;
             FlattenEnabled = definition.Flattening?.Enabled ?? false;
+            ExpectedFileName = definition.ExpectedFileName ?? string.Empty;
+            FileNameIsPrefix = definition.FileNameIsPrefix;
 
             FieldMappings.Clear();
             foreach (var fm in definition.FieldMappings)
@@ -330,6 +374,57 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Load Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OpenSettings()
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Select default mapping output folder"
+        };
+
+        if (!string.IsNullOrEmpty(_uiSettings.DefaultMappingOutputFolder) &&
+            Directory.Exists(_uiSettings.DefaultMappingOutputFolder))
+        {
+            dialog.InitialDirectory = _uiSettings.DefaultMappingOutputFolder;
+        }
+
+        if (dialog.ShowDialog() == true)
+        {
+            _uiSettings.DefaultMappingOutputFolder = dialog.FolderName;
+            SaveUiSettings();
+            StatusMessage = $"Default mapping output folder set to '{dialog.FolderName}'.";
+        }
+    }
+
+    private void LoadUiSettings()
+    {
+        try
+        {
+            if (File.Exists(UiSettingsPath))
+            {
+                var json = File.ReadAllText(UiSettingsPath);
+                _uiSettings = JsonSerializer.Deserialize<UiSettings>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new UiSettings();
+            }
+        }
+        catch
+        {
+            _uiSettings = new UiSettings();
+        }
+    }
+
+    private void SaveUiSettings()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_uiSettings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(UiSettingsPath, json);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Could not save UI settings: {ex.Message}";
         }
     }
 }
