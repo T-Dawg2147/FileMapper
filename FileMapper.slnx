@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FileMapper.Converter/FileMapper.Converter.csproj" />
+    <Project Path="src/FileMapper.Core/FileMapper.Core.csproj" />
+    <Project Path="src/FileMapper.UI/FileMapper.UI.csproj" />
+  </Folder>
+</Solution>

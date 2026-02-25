@@ -1,0 +1,230 @@
+<Window x:Class="FileMapper.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FileMapper.UI.ViewModels"
+        Title="FileMapper — Mapping Designer"
+        Width="1200" Height="750"
+        MinWidth="900" MinHeight="600">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="LabelStyle" TargetType="Label">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+        <Style x:Key="TextBoxStyle" TargetType="TextBox">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="3,2"/>
+        </Style>
+        <Style x:Key="ButtonStyle" TargetType="Button">
+            <Setter Property="Margin" Value="4,2"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="MinWidth" Value="80"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New Mapping" Command="{Binding LoadMappingCommand}"/>
+                <MenuItem Header="_Open Mapping…" Command="{Binding LoadMappingCommand}"/>
+                <MenuItem Header="_Save Mapping…" Command="{Binding SaveMappingCommand}"/>
+                <Separator/>
+                <MenuItem Header="E_xit" Click="MenuExit_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <!-- Status Bar -->
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusMessage}"/>
+            </StatusBarItem>
+        </StatusBar>
+
+        <!-- Main Content -->
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Row 0: Mapping Name + Save/Load -->
+            <GroupBox Grid.Row="0" Header="Mapping" Style="{StaticResource GroupBoxStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Column="0" Content="Name:" Style="{StaticResource LabelStyle}"/>
+                    <TextBox Grid.Column="1" Text="{Binding MappingName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource TextBoxStyle}"/>
+                    <Button Grid.Column="2" Content="💾 Save Mapping"
+                            Command="{Binding SaveMappingCommand}" Style="{StaticResource ButtonStyle}"/>
+                    <Button Grid.Column="3" Content="📂 Open Mapping"
+                            Command="{Binding LoadMappingCommand}" Style="{StaticResource ButtonStyle}"/>
+                </Grid>
+            </GroupBox>
+
+            <!-- Row 1: Source & Target File Selection -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Source -->
+                <GroupBox Grid.Column="0" Header="Source File" Style="{StaticResource GroupBoxStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Row="0" Grid.Column="0" Content="Type:" Style="{StaticResource LabelStyle}"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1"
+                                  ItemsSource="{Binding FileTypes}"
+                                  SelectedItem="{Binding SourceType}"
+                                  Margin="2" VerticalAlignment="Center"/>
+                        <Label Grid.Row="0" Grid.Column="2" Content="Flatten:" Style="{StaticResource LabelStyle}"/>
+                        <CheckBox Grid.Row="0" Grid.Column="3"
+                                  IsChecked="{Binding FlattenEnabled}"
+                                  VerticalAlignment="Center" Margin="2"
+                                  ToolTip="Flatten nested JSON/XML field names"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" Content="File:" Style="{StaticResource LabelStyle}"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                 Text="{Binding SourceFilePath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource TextBoxStyle}"/>
+                        <Button Grid.Row="1" Grid.Column="3" Content="Browse…"
+                                Command="{Binding BrowseSourceCommand}" Style="{StaticResource ButtonStyle}"/>
+                        <Button Grid.Row="1" Grid.Column="4" Content="Load Fields"
+                                Command="{Binding LoadSourceFieldsCommand}" Style="{StaticResource ButtonStyle}"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- Target -->
+                <GroupBox Grid.Column="1" Header="Target File" Style="{StaticResource GroupBoxStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Row="0" Grid.Column="0" Content="Type:" Style="{StaticResource LabelStyle}"/>
+                        <ComboBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3"
+                                  ItemsSource="{Binding FileTypes}"
+                                  SelectedItem="{Binding TargetType}"
+                                  Margin="2" VerticalAlignment="Center"/>
+
+                        <Label Grid.Row="1" Grid.Column="0" Content="File:" Style="{StaticResource LabelStyle}"/>
+                        <TextBox Grid.Row="1" Grid.Column="1"
+                                 Text="{Binding TargetFilePath, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource TextBoxStyle}"/>
+                        <Button Grid.Row="1" Grid.Column="2" Content="Browse…"
+                                Command="{Binding BrowseTargetCommand}" Style="{StaticResource ButtonStyle}"/>
+                        <Button Grid.Row="1" Grid.Column="3" Content="Load Fields"
+                                Command="{Binding LoadTargetFieldsCommand}" Style="{StaticResource ButtonStyle}"/>
+                    </Grid>
+                </GroupBox>
+            </Grid>
+
+            <!-- Row 2: Three-panel mapping area -->
+            <Grid Grid.Row="2" Margin="0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" MinWidth="180"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="2*" MinWidth="300"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="*" MinWidth="180"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Source Fields Panel -->
+                <GroupBox Grid.Column="0" Header="Source Fields" Style="{StaticResource GroupBoxStyle}">
+                    <ListBox ItemsSource="{Binding SourceFields}"
+                             SelectedItem="{Binding SelectedSourceField}"
+                             SelectionMode="Single"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+                </GroupBox>
+
+                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"/>
+
+                <!-- Mapping Grid -->
+                <GroupBox Grid.Column="2" Header="Field Mappings" Style="{StaticResource GroupBoxStyle}">
+                    <DockPanel>
+                        <!-- Toolbar -->
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,4">
+                            <Button Content="➕ Add Mapping"
+                                    Command="{Binding AddMappingCommand}"
+                                    Style="{StaticResource ButtonStyle}"
+                                    ToolTip="Map selected source field to selected target field"/>
+                            <Button Content="➖ Remove"
+                                    Command="{Binding RemoveMappingCommand}"
+                                    CommandParameter="{Binding ElementName=MappingGrid, Path=SelectedItem}"
+                                    Style="{StaticResource ButtonStyle}"/>
+                        </StackPanel>
+
+                        <DataGrid x:Name="MappingGrid"
+                                  ItemsSource="{Binding FieldMappings}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  SelectionMode="Single"
+                                  AlternatingRowBackground="#F5F5F5"
+                                  GridLinesVisibility="Horizontal">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Source Path" Binding="{Binding SourcePath}" Width="*"/>
+                                <DataGridTextColumn Header="Target Name" Binding="{Binding TargetName}" Width="*"/>
+                                <DataGridTextColumn Header="Source Type" Binding="{Binding SourceDataType}" Width="100"/>
+                                <DataGridTextColumn Header="Target Type" Binding="{Binding TargetDataType}" Width="100"/>
+                                <DataGridCheckBoxColumn Header="⚠ Ack." Binding="{Binding TypeWarningAcknowledged}" Width="60"
+                                                        IsReadOnly="True"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </GroupBox>
+
+                <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch"/>
+
+                <!-- Target Fields Panel -->
+                <GroupBox Grid.Column="4" Header="Target Fields" Style="{StaticResource GroupBoxStyle}">
+                    <ListBox ItemsSource="{Binding TargetFields}"
+                             SelectedItem="{Binding SelectedTargetField}"
+                             SelectionMode="Single"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"/>
+                </GroupBox>
+            </Grid>
+
+            <!-- Row 3: Quick-add tip -->
+            <TextBlock Grid.Row="3" Margin="6,2"
+                       Text="Tip: Select a Source Field and a Target Field, then click ➕ Add Mapping."
+                       Foreground="Gray" FontStyle="Italic"/>
+        </Grid>
+    </DockPanel>
+</Window>

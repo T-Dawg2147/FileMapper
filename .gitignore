@@ -1,0 +1,21 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+*.DS_Store
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+project.nuget.cache
+
+# Logs
+logs/
+*.log
+
+# dotnet publish output
+publish/
